@@ -1,1 +1,18 @@
-line1
+Konstanten
+
+Public Const ERSTE_LEERZEILE As Long = 3
+Public Const ERSTE_ARBEITSPLATZZEILE As Long = 4
+Public Const ERSTE_MITARBEITERZEILE As Long = 5
+
+Public Const STARTSPALTE_KALENDER As Long = 6 ' Spalte F
+Public Const ENDSPALTE_KALENDER As Long = 544 'Spalte TX
+
+
+Public Const FARBE_WOCHENENDE As Long = &HE6C29B ' Hex-Wert für RGB(155,194,230) --> blauer Hintergrund von Samstagen & Sonntagen
+
+
+Public Const TABELLE_ABWESENHEITEN As String = "Abwesenheiten"
+Public Const BLATT_DB As String = "Datenbank"
+
+Public Const TABELLE_GRUNDDATEN As String = "Grunddaten"
+Public Const BLATT_GRUNDDATEN As String = "Grunddaten"
