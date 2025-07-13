@@ -1,1 +1,346 @@
-line1
+tem wechseln
+
+Function FindeMitarbeiterNachTeamMitArbeitsplatz(tbl As ListObject, teamInput As String) As Object
+    
+    Dim dictArbeitsplaetze As Object
+    Dim i As Long
+    Dim mitName As String, mitTeam As String, mitAP As String
+
+    Set dictArbeitsplaetze = CreateObject("Scripting.Dictionary")
+
+    For i = 1 To tbl.ListRows.Count
+        mitName = tbl.DataBodyRange(i, 2).Value
+        mitTeam = tbl.DataBodyRange(i, 8).Value
+        mitAP = tbl.DataBodyRange(i, 9).Value
+
+        If UCase(Trim(mitTeam)) = UCase(Trim(teamInput)) And Trim(mitAP) <> "" And Trim(mitName) <> "" Then
+            If Not dictArbeitsplaetze.Exists(mitAP) Then
+                dictArbeitsplaetze.Add mitAP, New Collection
+            End If
+            dictArbeitsplaetze(mitAP).Add mitName
+        End If
+    Next i
+
+    Set FindeMitarbeiterNachTeamMitArbeitsplatz = dictArbeitsplaetze
+End Function
+
+Sub Teil1()
+    Dim wsQuelle As Worksheet: Set wsQuelle = ThisWorkbook.Worksheets(TABELLE_GRUNDDATEN)
+    Dim wsZiel As Worksheet: Set wsZiel = ActiveSheet
+    
+    Dim tbl As ListObject: Set tbl = wsQuelle.ListObjects(BLATT_GRUNDDATEN)
+    
+    Dim teamInput As String
+    teamInput = InputBox("Bitte Teamnamen (z.B. TXSK) eingeben (Groß-/Kleinschreibung egal):", "Team auswählen")
+    If Trim(teamInput) = "" Then
+        MsgBox "Kein Team eingegeben. Vorgang abgebrochen."
+        Exit Sub
+    End If
+
+    Dim dictArbeitsplaetze As Object: Set dictArbeitsplaetze = FindeMitarbeiterNachTeamMitArbeitsplatz(tbl, teamInput)
+    ' dictArbeitsplaetze enthält jetzt zu jedem Arbeitsplatz die zugehörigen Mitarbeiter
+    
+    ' Arbeitsplätze alphabetisch sortieren
+    Dim v As Variant: v = dictArbeitsplaetze.Keys
+    Dim arrKeys() As String
+    Dim i As Long
+
+    ReDim arrKeys(LBound(v) To UBound(v))
+
+    For i = LBound(v) To UBound(v)
+        arrKeys(i) = CStr(v(i))
+    Next i
+    
+    Call QuickSortStrings(arrKeys, LBound(arrKeys), UBound(arrKeys))
+    
+    Dim lastMitarbeiterRow As Long
+    
+    With wsZiel
+    ' Inhalte und Formatierungen löschen (inkl. Fett)
+        .Range("B4", .Cells(.Rows.Count, "B")).ClearContents
+        .Range("B4", .Cells(.Rows.Count, "B")).Font.Bold = False
+        .Range(.Cells(ERSTE_MITARBEITERZEILE, STARTSPALTE_KALENDER), .Cells(ERSTE_MITARBEITERZEILE, ENDSPALTE_KALENDER)).ClearContents
+        .Rows("6:1000").Delete
+        
+        For Each zelle In .Range(.Cells(ERSTE_MITARBEITERZEILE, STARTSPALTE_KALENDER), Cells(ERSTE_MITARBEITERZEILE, ENDSPALTE_KALENDER))
+            If zelle.Interior.Color <> FARBE_WOCHENENDE Then
+                zelle.Interior.ColorIndex = xlColorIndexNone ' Füllfarbe zurücksetzen
+            End If
+        Next zelle
+
+        ' Arbeitsplätze und Mitarbeiter schreiben
+        Dim outputRow As Long: outputRow = 4
+        Dim ap As String, mitarbeiterCol As Collection
+        Dim j As Long, k As Long
+
+        For j = LBound(arrKeys) To UBound(arrKeys)
+            ap = arrKeys(j)
+        
+            ' Arbeitsplatz in Spalte B schreiben (optional fett, wenn du willst)
+            .Cells(outputRow, "B").Value = ap
+            .Cells(outputRow, "B").Font.Bold = True
+            KalenderFormatZeileUebernehmen outputRow, wsZiel, "Arbeitsplatz"
+            outputRow = outputRow + 1
+        
+            ' Mitarbeiter unter dem Arbeitsplatz schreiben
+            Set mitarbeiterCol = dictArbeitsplaetze(ap)
+            For k = 1 To mitarbeiterCol.Count
+                .Cells(outputRow, "B").Value = mitarbeiterCol(k)
+                 ' Formeln aus Zeile 5 in die aktuelle Zeile kopieren
+                .Cells(outputRow, 1).Formula = .Range("A5").Formula
+                .Cells(outputRow, 3).Formula = .Range("C5").Formula
+                .Cells(outputRow, 4).Formula = .Range("D5").Formula
+                .Cells(outputRow, 5).Formula = .Range("E5").Formula
+                
+                KalenderFormatZeileUebernehmen outputRow, wsZiel, "Mitarbeiter"
+                                
+                lastMitarbeiterRow = outputRow
+                outputRow = outputRow + 1
+            Next k
+        
+            ' Leerzeile einfügen (nur nicht ganz am Ende)
+            If j < UBound(arrKeys) Then
+                KalenderFormatZeileUebernehmen outputRow, wsZiel, "Leerzeile"
+            End If
+
+            outputRow = outputRow + 1
+        Next j
+        
+        'gesamten Text nach Spalte B zentrieren
+        .Range(wsZiel.Cells(ERSTE_ARBEITSPLATZZEILE, 3), wsZiel.Cells(lastMitarbeiterRow, ENDSPALTE_KALENDER)).HorizontalAlignment = xlCenter
+    End With
+    
+    'Rahmenlinien
+    With wsZiel.Range(wsZiel.Cells(ERSTE_ARBEITSPLATZZEILE, 2), wsZiel.Cells(lastMitarbeiterRow, ENDSPALTE_KALENDER)).Borders
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+    End With
+    
+    
+    
+    ' Spaltenbreite anpassen
+    wsZiel.Columns("B").AutoFit
+
+    
+
+    
+    
+End Sub
+
+Sub MitarbeiterNachArbeitsplatzMitTeamUndFormatierung()
+
+    Dim wsQuelle As Worksheet: Set wsQuelle = ThisWorkbook.Worksheets(TABELLE_GRUNDDATEN)
+    Dim wsZiel As Worksheet: Set wsZiel = ActiveSheet
+    
+    Dim tbl As ListObject: Set tbl = wsQuelle.ListObjects(BLATT_GRUNDDATEN)
+    
+    Dim teamInput As String
+    teamInput = InputBox("Bitte Teamnamen (z.B. TXSK) eingeben (Groß-/Kleinschreibung egal):", "Team auswählen")
+    If Trim(teamInput) = "" Then
+        MsgBox "Kein Team eingegeben. Vorgang abgebrochen."
+        Exit Sub
+    End If
+
+    Dim dictArbeitsplaetze As Object: Set dictArbeitsplaetze = FindeMitarbeiterNachTeamMitArbeitsplatz(tbl, teamInput)
+    ' dictArbeitsplaetze enthält jetzt zu jedem Arbeitsplatz die zugehörigen Mitarbeiter
+    
+    ' Arbeitsplätze alphabetisch sortieren
+    Dim v As Variant: v = dictArbeitsplaetze.Keys
+    Dim arrKeys() As String
+    Dim i As Long
+
+    ReDim arrKeys(LBound(v) To UBound(v))
+
+    For i = LBound(v) To UBound(v)
+        arrKeys(i) = CStr(v(i))
+    Next i
+    
+    Call QuickSortStrings(arrKeys, LBound(arrKeys), UBound(arrKeys))
+    
+    Dim j As Long
+    For j = LBound(arrKeys) To UBound(arrKeys)
+        Debug.Print arrKeys(j)
+    Next j
+    
+    With wsZiel
+    .Range("B4", .Cells(.Rows.Count, "B")).ClearContents
+    End With
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    ' Blatt ab Zeile 5 bereinigen: Spalte B + Spalte A (Formeln)
+    Dim lastRow As Long
+    lastRow = wsZiel.Cells(wsZiel.Rows.Count, "B").End(xlUp).Row
+    If lastRow < 5 Then lastRow = 5
+    wsZiel.Range("A5:B" & lastRow).ClearContents
+    wsZiel.Range(wsZiel.Cells(5, 3), wsZiel.Cells(lastRow, 367)).ClearFormats ' Kalenderzellen auch löschen
+    
+    Dim outputRow As Long
+    outputRow = 5 ' ab Zeile 5 schreiben
+    
+    ' Schleife durch alle Arbeitsplätze
+    For Each key In arrKeys
+        ' Arbeitsplatztitel schreiben
+        wsZiel.Cells(outputRow, 2).Value = key
+        ' Arbeitsplatzzeile formatieren (ausser erste Arbeitsplatzzeile)
+        If outputRow > 5 Then
+            KalenderFormatZeileUebernehmen outputRow, wsZiel, "Arbeitsplatz"
+        End If
+        outputRow = outputRow + 1
+        
+        ' Mitarbeiter alphabetisch sortieren
+        Dim colM As Collection
+        Set colM = dictArbeitsplaetze(key)
+        ReDim tempArray(1 To colM.Count)
+        For i = 1 To colM.Count
+            tempArray(i) = colM(i)
+        Next i
+        Call QuickSortStrings(tempArray, LBound(tempArray), UBound(tempArray))
+        
+        ' Mitarbeiter schreiben + Zeilen formatieren
+        For i = LBound(tempArray) To UBound(tempArray)
+            wsZiel.Cells(outputRow, 2).Value = tempArray(i)
+            ' Mitarbeiterzeile formatieren
+            KalenderFormatZeileUebernehmen outputRow, wsZiel, "Mitarbeiter"
+            outputRow = outputRow + 1
+        Next i
+        
+        ' Leerzeile einfügen mit grauer Füllfarbe in Spalte B (als Trennung)
+        wsZiel.Cells(outputRow, 2).Value = ""
+        wsZiel.Cells(outputRow, 2).Interior.Color = RGB(200, 200, 200) ' grau
+        KalenderFormatZeileUebernehmen outputRow, wsZiel, "Leerzeile"
+        outputRow = outputRow + 1
+    Next key
+    
+    ' Letzte Leerzeile entfernen (optional)
+    If wsZiel.Cells(outputRow - 1, 2).Value = "" Then
+        wsZiel.Rows(outputRow - 1).ClearContents
+        wsZiel.Cells(outputRow - 1, 2).Interior.ColorIndex = xlNone
+    End If
+    
+    ' Formeln in Spalte A anpassen (Zeilen 5 bis outputRow-1)
+    ' Annahme: Spalte A ab Zeile 5 hat Formeln, diese ziehen wir runter/hoch entsprechend
+    Dim formelZelle As Range
+    Set formelZelle = wsZiel.Cells(5, 1)
+    
+    If outputRow - 1 >= 5 Then
+        ' Lösche Formeln darunter, dann ziehe runter
+        wsZiel.Range(wsZiel.Cells(5, 1), wsZiel.Cells(wsZiel.Rows.Count, 1)).ClearContents
+        formelZelle.Copy
+        wsZiel.Range(wsZiel.Cells(5, 1), wsZiel.Cells(outputRow - 1, 1)).PasteSpecial xlPasteFormulas
+        Application.CutCopyMode = False
+    End If
+    
+    MsgBox "Mitarbeiterliste erfolgreich aktualisiert für Team: " & teamInput, vbInformation
+    
+End Sub
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+' Hilfsfunktion: Sortieren von String-Arrays mit QuickSort
+Sub QuickSortStrings(arr() As String, ByVal first As Long, ByVal last As Long)
+    Dim pivot As String, i As Long, j As Long, temp As String
+    i = first
+    j = last
+    pivot = arr((first + last) \ 2)
+    Do While i <= j
+        Do While arr(i) < pivot
+            i = i + 1
+        Loop
+        Do While arr(j) > pivot
+            j = j - 1
+        Loop
+        If i <= j Then
+            temp = arr(i)
+            arr(i) = arr(j)
+            arr(j) = temp
+            i = i + 1
+            j = j - 1
+        End If
+    Loop
+    If first < j Then QuickSortStrings arr, first, j
+    If i < last Then QuickSortStrings arr, i, last
+End Sub
+
+Sub KalenderFormatZeileUebernehmen(Zeile As Long, ws As Worksheet, ZeilenTyp As String)
+    If Zeile <= ERSTE_ARBEITSPLATZZEILE Then Exit Sub
+
+    Dim VorlageZeile As Long
+    Dim rngZiel As Range
+    Dim rngVorlage As Range
+
+    Set rngZiel = ws.Range(ws.Cells(Zeile, STARTSPALTE_KALENDER), ws.Cells(Zeile, ENDSPALTE_KALENDER))
+
+    Select Case ZeilenTyp
+        Case "Arbeitsplatz"
+            VorlageZeile = ERSTE_ARBEITSPLATZZEILE
+            Set rngVorlage = ws.Range(ws.Cells(VorlageZeile, STARTSPALTE_KALENDER), ws.Cells(VorlageZeile, ENDSPALTE_KALENDER))
+            
+            rngVorlage.Copy
+            rngZiel.PasteSpecial xlPasteFormats
+            rngVorlage.Copy
+            rngZiel.PasteSpecial xlPasteValues
+
+        Case "Leerzeile"
+            VorlageZeile = ERSTE_LEERZEILE
+            Set rngVorlage = ws.Range(ws.Cells(VorlageZeile, STARTSPALTE_KALENDER), ws.Cells(VorlageZeile, ENDSPALTE_KALENDER))
+            
+            rngVorlage.Copy
+            rngZiel.PasteSpecial xlPasteFormats
+            rngVorlage.Copy
+            rngZiel.PasteSpecial xlPasteValues
+
+        Case "Mitarbeiter"
+            ' Inhalte löschen
+            rngZiel.ClearContents
+            
+            ' Alle Formate von ERSTE_ARBEITSPLATZZEILE übernehmen
+            VorlageZeile = ERSTE_ARBEITSPLATZZEILE
+            Set rngVorlage = ws.Range(ws.Cells(VorlageZeile, STARTSPALTE_KALENDER), ws.Cells(VorlageZeile, ENDSPALTE_KALENDER))
+            rngVorlage.Copy
+            rngZiel.PasteSpecial xlPasteFormats
+            
+            ' Schrift in rngZiel auf normal (kein Fett) setzen
+            rngZiel.Font.Bold = False
+            
+            ' Hintergrundfarbe zurücksetzen, außer wenn RGB = (155,194,230)
+            Dim cell As Range
+    
+            For Each cell In rngZiel
+                If cell.Interior.Color <> FARBE_WOCHENENDE Then
+                    cell.Interior.ColorIndex = xlNone ' Hintergrundfarbe löschen
+                End If
+            Next cell
+
+        Case Else
+            Exit Sub
+    End Select
+
+    Application.CutCopyMode = False
+End Sub
+
+
+
