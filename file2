@@ -1,1 +1,30 @@
-line1
+DB
+
+Sub EintragHinzufuegen(Userkey As String, Tag As Date, Abwesenheitsart As String)
+    Dim ws As Worksheet
+    Dim tbl As ListObject
+    Dim neueZeile As ListRow
+
+    ' Blatt "Datenbank" setzen
+    Set ws = ThisWorkbook.Sheets(BLATT_DB)
+
+    ' Tabelle "Abwesenheiten" setzen
+    Set tbl = ws.ListObjects(TABELLE_ABWESENHEITEN)
+
+    ' Neue Zeile am Ende der Tabelle hinzufügen
+    Set neueZeile = tbl.ListRows.Add
+
+    ' Werte eintragen
+    With neueZeile
+        .Range(1, 1).Value = Userkey
+        .Range(1, 2).Value = Tag
+        .Range(1, 3).Value = Abwesenheitsart
+    End With
+End Sub
+
+
+
+
+Sub TestEintrag()
+    EintragHinzufuegen "ya2249", DateValue("01.08.2025"), "Urlaub"
+End Sub
