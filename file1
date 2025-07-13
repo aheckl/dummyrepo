@@ -1,1 +1,14 @@
-line1
+AnsichtWechseln
+
+Sub ToggleFullscreenView()
+    Static IsFullscreen As Boolean
+    IsFullscreen = Not IsFullscreen
+
+    ActiveWindow.DisplayGridlines = False ' Gitternetzlinien
+    Application.DisplayFullScreen = IsFullscreen 'Fullscreen nimmt automatisch StatusBar weg, aber nicht Headings udn Formularbar
+    Application.DisplayFormulaBar = Not IsFullscreen ' Formelleiste; ACHTUNG diese zeile muss nach DisplayFullScreen kommen
+    ActiveWindow.DisplayHeadings = Not IsFullscreen ' Zeilennummern und Spaltennamen
+    Application.DisplayStatusBar = True ' kleine Leiste unten mit Zoom-Schieberegler -->
+End Sub
+
+
